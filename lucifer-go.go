@@ -5,14 +5,53 @@ import "fmt"
 var S_BOX_ZERO = [16]byte{12, 15, 7, 10, 14, 13, 11, 0, 2, 6, 3, 1, 9, 4, 5, 8}
 var S_BOX_ONE = [16]byte{7, 2, 14, 9, 3, 11, 0, 4, 12, 13, 1, 10, 6, 15, 8, 5}
 
+func reverseByte(n byte) (reversed byte) {
+	reversed = 0x00
+	if ((n >> 7) & 0x01) == 0x01 { //0th bit (left to right)
+		reversed |= 1 //flips 7th bit
+	}
+	if ((n >> 6) & 0x01) == 0x01 { //1st bit
+		reversed |= 2 //flips 6th bit
+	}
+	if ((n >> 5) & 0x01) == 0x01 { //2nd bit
+		reversed |= 4 //flips 5th bit
+	}
+	if ((n >> 4) & 0x01) == 0x01 { //3rd bit
+		reversed |= 8 //flips 4th bit
+	}
+	if ((n >> 3) & 0x01) == 0x01 { //4th bit
+		reversed |= 16 //flips 3rd bit
+	}
+	if ((n >> 2) & 0x01) == 0x01 { //5th bit
+		reversed |= 32 //flips 1st bit
+	}
+	if ((n >> 1) & 0x01) == 0x01 { //6th bit
+		reversed |= 64 //flips 7th bit
+	}
+	if ((n >> 0) & 0x01) == 0x01 { //7th bit
+		reversed |= 128 //flips 6th bit
+	}
+	return reversed
+}
+
 func applySBoxes(msg byte, icb bool) (confused byte) {
-	var leftbits byte = msg >> 4
-	var rightbits byte = msg & 0x0F // 00001111
+	var leftbits byte = 0
+	var rightbits byte = 0
+
+	//read bits out of the left nibble (4 bits) with the rightmost bit being the "most significant"
+	for i := uint(4); i <= 7; i++ {
+		leftbits = (leftbits*2) + ((msg >> i & 0x01))
+	}
+
+	//same, for right nibble
+	for i := uint(0); i <= 3; i++ {
+		rightbits = (rightbits*2) + ((msg >> i & 0x01))
+	}
 
 	if icb {
-		return (S_BOX_ZERO[rightbits] << 4) | S_BOX_ONE[leftbits]
+		return reverseByte((S_BOX_ONE[rightbits] << 4) | S_BOX_ZERO[leftbits])
 	} else {
-		return (S_BOX_ZERO[leftbits] << 4) | S_BOX_ONE[rightbits]
+		return reverseByte((S_BOX_ONE[leftbits] << 4) | S_BOX_ZERO[rightbits])
 	}
 }
 
@@ -97,8 +136,6 @@ func stepfn(key_byte byte, upper_msg_byte byte, icb bool, step_num uint8, lower_
 }
 
 func encryptBlock(key [16]byte, msg []byte) {
-	// I think I need to reverse each of these...
-	//OR, access them in reverse
 	var msg_lower_half []byte = msg[0:8]
 	var msg_upper_half []byte = msg[8:16]
 
@@ -108,12 +145,17 @@ func encryptBlock(key [16]byte, msg []byte) {
 		for step := uint8(0); step < 8; step++ {
 			//round 0 = bytes 0-7, round 1 = bytes 7-14...
 			var key_byte byte = key[((round*7)+step)%16]
-			var upper_msg_byte byte = msg_upper_half[step] //or if I'm reversing, 7-step?
+			var upper_msg_byte byte = msg_upper_half[step]
 			var icb bool = ((transform_control_byte >> (7 - step)) & 0x01) == 0x01
 			stepfn(key_byte, upper_msg_byte, icb, step, msg_lower_half)
 		}
 
 		msg_lower_half, msg_upper_half = msg_upper_half, msg_lower_half
+	}
+
+	//swap contents of the lower half and upper half of the message
+	for i := 0; i < 8; i++ {
+		msg_lower_half[i], msg_upper_half[i] = msg_upper_half[i], msg_lower_half[i]
 	}
 }
 
