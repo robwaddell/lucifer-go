@@ -159,6 +159,32 @@ func encryptBlock(key [16]byte, msg []byte) {
 	}
 }
 
+//decryption is the same as encryption, but with key bytes accessed in a
+//different order
+func decryptBlock(key [16]byte, msg []byte) {
+	var msg_lower_half []byte = msg[0:8]
+	var msg_upper_half []byte = msg[8:16]
+
+	for round := uint8(0); round < 16; round++ {
+		var transform_control_byte byte = key[((round+1)*9)%16]
+
+		for step := uint8(0); step < 8; step++ {
+			//round 0 = bytes 9-0, round 1 = bytes 2-9, round 2 = bytes 11-2...
+			var key_byte byte = key[(((round+1)*9)+step)%16]
+			var upper_msg_byte byte = msg_upper_half[step]
+			var icb bool = ((transform_control_byte >> (7 - step)) & 0x01) == 0x01
+			stepfn(key_byte, upper_msg_byte, icb, step, msg_lower_half)
+		}
+
+		msg_lower_half, msg_upper_half = msg_upper_half, msg_lower_half
+	}
+
+	//swap contents of the lower half and upper half of the message
+	for i := 0; i < 8; i++ {
+		msg_lower_half[i], msg_upper_half[i] = msg_upper_half[i], msg_lower_half[i]
+	}
+}
+
 func main() {
 	var key [16]byte = [16]byte{0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF, 0xFE, 0xDC, 0xBA, 0x98, 0x76, 0x54, 0x32, 0x10}
 	var msg []byte = []byte{0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB}
@@ -182,6 +208,28 @@ func main() {
 
 	fmt.Printf("\n")
 	encryptBlock(key, msg)
+	fmt.Printf("\n")
+
+	fmt.Printf("%08b\n", msg[0])
+	fmt.Printf("%08b\n", msg[1])
+	fmt.Printf("%08b\n", msg[2])
+	fmt.Printf("%08b\n", msg[3])
+	fmt.Printf("%08b\n", msg[4])
+	fmt.Printf("%08b\n", msg[5])
+	fmt.Printf("%08b\n", msg[6])
+	fmt.Printf("%08b\n", msg[7])
+	fmt.Printf("%08b\n", msg[8])
+	fmt.Printf("%08b\n", msg[9])
+	fmt.Printf("%08b\n", msg[10])
+	fmt.Printf("%08b\n", msg[11])
+	fmt.Printf("%08b\n", msg[12])
+	fmt.Printf("%08b\n", msg[13])
+	fmt.Printf("%08b\n", msg[14])
+	fmt.Printf("%08b\n", msg[15])
+	fmt.Println(msg)
+
+	fmt.Printf("\n")
+	decryptBlock(key, msg)
 	fmt.Printf("\n")
 
 	fmt.Printf("%08b\n", msg[0])
