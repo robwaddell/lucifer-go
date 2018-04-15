@@ -40,12 +40,12 @@ func applySBoxes(msg byte, icb bool) (confused byte) {
 
 	//read bits out of the left nibble (4 bits) with the rightmost bit being the "most significant"
 	for i := uint(4); i <= 7; i++ {
-		leftbits = (leftbits*2) + ((msg >> i & 0x01))
+		leftbits = (leftbits * 2) + (msg >> i & 0x01)
 	}
 
 	//same, for right nibble
 	for i := uint(0); i <= 3; i++ {
-		rightbits = (rightbits*2) + ((msg >> i & 0x01))
+		rightbits = (rightbits * 2) + (msg >> i & 0x01)
 	}
 
 	if icb {
