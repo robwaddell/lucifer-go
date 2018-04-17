@@ -5,6 +5,55 @@ import "fmt"
 var S_BOX_ZERO = [16]byte{12, 15, 7, 10, 14, 13, 11, 0, 2, 6, 3, 1, 9, 4, 5, 8}
 var S_BOX_ONE = [16]byte{7, 2, 14, 9, 3, 11, 0, 4, 12, 13, 1, 10, 6, 15, 8, 5}
 
+//This lookup table encodes all of the output values for all of the input values of a function that
+//permutes a byte.
+//Put simply, if the 0th bit of the input is 1, then the 3rd bit (counting from 0) of the output is 1.
+//If the 1st bit of the input is 1, then the 5th bit of the output is 1. Here is the full permutation:
+//0 -> 3
+//1 -> 5
+//2 -> 0
+//3 -> 4
+//4 -> 2
+//5 -> 1
+//6 -> 7
+//7 -> 6
+//(above, the 0th bit is the left-most, most-significant bit)
+//This could be implemented with bitwise operators, but it is more efficient to use a lookup table.
+var BYTE_PERMUTE = [256]byte{
+	0, 2, 1, 3, 64, 66, 65, 67,
+	32, 34, 33, 35, 96, 98, 97, 99,
+	8, 10, 9, 11, 72, 74, 73, 75,
+	40, 42, 41, 43, 104, 106, 105, 107,
+	128, 130, 129, 131, 192, 194, 193, 195,
+	160, 162, 161, 163, 224, 226, 225, 227,
+	136, 138, 137, 139, 200, 202, 201, 203,
+	168, 170, 169, 171, 232, 234, 233, 235,
+	4, 6, 5, 7, 68, 70, 69, 71,
+	36, 38, 37, 39, 100, 102, 101, 103,
+	12, 14, 13, 15, 76, 78, 77, 79,
+	44, 46, 45, 47, 108, 110, 109, 111,
+	132, 134, 133, 135, 196, 198, 197, 199,
+	164, 166, 165, 167, 228, 230, 229, 231,
+	140, 142, 141, 143, 204, 206, 205, 207,
+	172, 174, 173, 175, 236, 238, 237, 239,
+	16, 18, 17, 19, 80, 82, 81, 83,
+	48, 50, 49, 51, 112, 114, 113, 115,
+	24, 26, 25, 27, 88, 90, 89, 91,
+	56, 58, 57, 59, 120, 122, 121, 123,
+	144, 146, 145, 147, 208, 210, 209, 211,
+	176, 178, 177, 179, 240, 242, 241, 243,
+	152, 154, 153, 155, 216, 218, 217, 219,
+	184, 186, 185, 187, 248, 250, 249, 251,
+	20, 22, 21, 23, 84, 86, 85, 87,
+	52, 54, 53, 55, 116, 118, 117, 119,
+	28, 30, 29, 31, 92, 94, 93, 95,
+	60, 62, 61, 63, 124, 126, 125, 127,
+	148, 150, 149, 151, 212, 214, 213, 215,
+	180, 182, 181, 183, 244, 246, 245, 247,
+	156, 158, 157, 159, 220, 222, 221, 223,
+	188, 190, 189, 191, 252, 254, 253, 255,
+}
+
 //this precomputed lookup table provides a convenient and efficient way
 //to reverse a byte, eg. "11110101" -> "10101111"
 var BYTE_REVERSE = [256]byte{
@@ -67,35 +116,8 @@ func applySBoxes(msg byte, icb bool) (confused byte) {
 	}
 }
 
-//this could be replaced by a 256-to-256 encoder,
-//similar to how the s-boxes work, just 16x the size
 func applyPermutation(interrupted byte) (permuted byte) {
-	permuted = 0x00
-	if ((interrupted >> 7) & 0x01) == 0x01 { //0th bit (left to right)
-		permuted |= 16 //flips 3rd bit
-	}
-	if ((interrupted >> 6) & 0x01) == 0x01 { //1st bit
-		permuted |= 4 //flips 5th bit
-	}
-	if ((interrupted >> 5) & 0x01) == 0x01 { //2nd bit
-		permuted |= 128 //flips 0th bit
-	}
-	if ((interrupted >> 4) & 0x01) == 0x01 { //3rd bit
-		permuted |= 8 //flips 4th bit
-	}
-	if ((interrupted >> 3) & 0x01) == 0x01 { //4th bit
-		permuted |= 32 //flips 2nd bit
-	}
-	if ((interrupted >> 2) & 0x01) == 0x01 { //5th bit
-		permuted |= 64 //flips 1st bit
-	}
-	if ((interrupted >> 1) & 0x01) == 0x01 { //6th bit
-		permuted |= 1 //flips 7th bit
-	}
-	if ((interrupted >> 0) & 0x01) == 0x01 { //7th bit
-		permuted |= 2 //flips 6th bit
-	}
-	return permuted
+	return BYTE_PERMUTE[interrupted]
 }
 
 //this implements a diffusion pattern on the msg half that
