@@ -1,6 +1,8 @@
 package main
 
 import "fmt"
+import "io"
+import "os"
 
 var S_BOX_ZERO = [16]byte{12, 15, 7, 10, 14, 13, 11, 0, 2, 6, 3, 1, 9, 4, 5, 8}
 var S_BOX_ONE = [16]byte{7, 2, 14, 9, 3, 11, 0, 4, 12, 13, 1, 10, 6, 15, 8, 5}
@@ -169,7 +171,7 @@ func stepfn(key_byte byte, upper_msg_byte byte, icb bool, step_num uint8, lower_
 	applyDiffusion(permuted_byte, step_num, lower_msg_half)
 }
 
-func encryptBlock(key [16]byte, msg []byte) {
+func encryptBlock(key []byte, msg []byte) {
 	var msg_lower_half []byte = msg[0:8]
 	var msg_upper_half []byte = msg[8:16]
 
@@ -195,7 +197,7 @@ func encryptBlock(key [16]byte, msg []byte) {
 
 //decryption is the same as encryption, but with key bytes accessed in a
 //different order
-func decryptBlock(key [16]byte, msg []byte) {
+func decryptBlock(key []byte, msg []byte) {
 	var msg_lower_half []byte = msg[0:8]
 	var msg_upper_half []byte = msg[8:16]
 
@@ -219,8 +221,104 @@ func decryptBlock(key [16]byte, msg []byte) {
 	}
 }
 
+func processFile(key_file, input_file, output_file string, encrypt bool) {
+	//read key_file into key
+	key := make([]byte, 16)
+	f_key, err := os.Open(key_file)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	defer f_key.Close()
+	n_bytes_key, err := f_key.Read(key)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	if n_bytes_key != 16 {
+		fmt.Println("key_file less than 16 bytes long")
+		return
+	}
+
+	//set up input and output file handles
+	f_input, err := os.Open(input_file)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	defer f_input.Close()
+	f_output, err := os.Create(output_file)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	defer f_output.Close()
+
+	input_block := make([]byte, 16)
+	//for encryption, we always want SOME padding- in the case of
+	//an input file that is divisible by 16 bytes, we will add
+	//a whole block of padding, so that no real data is mistaken for padding
+	var padding_added bool = false
+	for {
+		n_bytes_input, err := f_input.Read(input_block)
+		if err != nil {
+			if err == io.EOF {
+				if padding_added == false && encrypt == true {
+					var pad_block = []byte{
+						0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+						0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10,
+					}
+					encryptBlock(key, pad_block)
+					f_output.Write(pad_block)
+				}
+				if encrypt == false {
+					file_info, err := f_output.Stat()
+					if err != nil {
+						fmt.Println("couldn't get output file stat")
+						return
+					}
+					file_length := file_info.Size()
+
+					//read the last byte from the file to get padding length
+					pad_len_arr := make([]byte, 1)
+					f_output.ReadAt(pad_len_arr, file_length-1)
+					padding_length := pad_len_arr[0]
+
+					f_output.Truncate(file_length - int64(padding_length))
+				}
+				return
+			}
+
+			fmt.Println(err)
+			return
+		}
+		//if there are less than 16 bytes left, then we need to pad
+		if n_bytes_input < 16 {
+			if encrypt == true {
+				for i := n_bytes_input; i < 15; i++ {
+					input_block[i] = 0x00
+				}
+				//last byte = number of padding bytes
+				input_block[15] = byte(16 - n_bytes_input)
+				padding_added = true
+			} else {
+				fmt.Println("Number of bytes in file to decrypt not divisible by 16")
+				return
+			}
+		}
+
+		if encrypt == true {
+			encryptBlock(key, input_block)
+		} else {
+			decryptBlock(key, input_block)
+		}
+
+		f_output.Write(input_block)
+	}
+}
+
 func main() {
-	var key [16]byte = [16]byte{0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF, 0xFE, 0xDC, 0xBA, 0x98, 0x76, 0x54, 0x32, 0x10}
+	var key []byte = []byte{0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF, 0xFE, 0xDC, 0xBA, 0x98, 0x76, 0x54, 0x32, 0x10}
 	var msg []byte = []byte{0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB}
 	fmt.Printf("%08b\n", msg[0])
 	fmt.Printf("%08b\n", msg[1])
