@@ -1,1 +1,4 @@
 # lucifer-go
+Lucifer is a block cipher with a block size of 128 bits and a key size of 128 bits. It was developed by Horst Feistel and Don Coppersmith in 1973 for IBM. It was mostly noteworthy for being the first example of a cipher using a "Feistel network", making it a predecessor to the more-popular Data Encryption Standard.
+
+This repo serves as a Go implementation of Lucifer as described by Arthur Sorkin in his article "Lucifer, A Cryptographic Algorithm", published in Cryptologia volume 8 number 1 (1984). Currently it only supports an Electronic Code Book mode of operation. Block padding is done via ANSI X.923 - ie. the last byte of plaintext describes the number of padding bytes.
