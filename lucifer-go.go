@@ -1,5 +1,6 @@
 package main
 
+import "flag"
 import "fmt"
 import "io"
 import "os"
@@ -317,68 +318,34 @@ func processFile(key_file, input_file, output_file string, encrypt bool) {
 	}
 }
 
+func printUsage() {
+	fmt.Println("Usage: lucifer-go (--encrypt | --decrypt) <keyfile> <inputfile> <outputfile>")
+}
+
 func main() {
-	var key []byte = []byte{0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF, 0xFE, 0xDC, 0xBA, 0x98, 0x76, 0x54, 0x32, 0x10}
-	var msg []byte = []byte{0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB}
-	fmt.Printf("%08b\n", msg[0])
-	fmt.Printf("%08b\n", msg[1])
-	fmt.Printf("%08b\n", msg[2])
-	fmt.Printf("%08b\n", msg[3])
-	fmt.Printf("%08b\n", msg[4])
-	fmt.Printf("%08b\n", msg[5])
-	fmt.Printf("%08b\n", msg[6])
-	fmt.Printf("%08b\n", msg[7])
-	fmt.Printf("%08b\n", msg[8])
-	fmt.Printf("%08b\n", msg[9])
-	fmt.Printf("%08b\n", msg[10])
-	fmt.Printf("%08b\n", msg[11])
-	fmt.Printf("%08b\n", msg[12])
-	fmt.Printf("%08b\n", msg[13])
-	fmt.Printf("%08b\n", msg[14])
-	fmt.Printf("%08b\n", msg[15])
-	fmt.Println(msg)
+	encrypt := flag.Bool("encrypt", false, "encrypt a file")
+	decrypt := flag.Bool("decrypt", false, "decrypt a file")
+	flag.Parse()
+	if len(flag.Args()) != 3 {
+		fmt.Println("Unrecognized number of arguments")
+		printUsage()
+		return
+	}
+	if *encrypt && *decrypt {
+		fmt.Println("You can either encrypt or decrypt, not both")
+		printUsage()
+		return
+	}
+	if !*encrypt && !*decrypt {
+		fmt.Println("Please provide an --encrypt or a --decrypt option")
+		printUsage()
+		return
+	}
 
-	fmt.Printf("\n")
-	encryptBlock(key, msg)
-	fmt.Printf("\n")
+	keyfile := flag.Args()[0]
+	inputfile := flag.Args()[1]
+	outputfile := flag.Args()[2]
 
-	fmt.Printf("%08b\n", msg[0])
-	fmt.Printf("%08b\n", msg[1])
-	fmt.Printf("%08b\n", msg[2])
-	fmt.Printf("%08b\n", msg[3])
-	fmt.Printf("%08b\n", msg[4])
-	fmt.Printf("%08b\n", msg[5])
-	fmt.Printf("%08b\n", msg[6])
-	fmt.Printf("%08b\n", msg[7])
-	fmt.Printf("%08b\n", msg[8])
-	fmt.Printf("%08b\n", msg[9])
-	fmt.Printf("%08b\n", msg[10])
-	fmt.Printf("%08b\n", msg[11])
-	fmt.Printf("%08b\n", msg[12])
-	fmt.Printf("%08b\n", msg[13])
-	fmt.Printf("%08b\n", msg[14])
-	fmt.Printf("%08b\n", msg[15])
-	fmt.Println(msg)
-
-	fmt.Printf("\n")
-	decryptBlock(key, msg)
-	fmt.Printf("\n")
-
-	fmt.Printf("%08b\n", msg[0])
-	fmt.Printf("%08b\n", msg[1])
-	fmt.Printf("%08b\n", msg[2])
-	fmt.Printf("%08b\n", msg[3])
-	fmt.Printf("%08b\n", msg[4])
-	fmt.Printf("%08b\n", msg[5])
-	fmt.Printf("%08b\n", msg[6])
-	fmt.Printf("%08b\n", msg[7])
-	fmt.Printf("%08b\n", msg[8])
-	fmt.Printf("%08b\n", msg[9])
-	fmt.Printf("%08b\n", msg[10])
-	fmt.Printf("%08b\n", msg[11])
-	fmt.Printf("%08b\n", msg[12])
-	fmt.Printf("%08b\n", msg[13])
-	fmt.Printf("%08b\n", msg[14])
-	fmt.Printf("%08b\n", msg[15])
-	fmt.Println(msg)
+	//if decrypt is true, then encrypt will be false, thus passing the right value in
+	processFile(keyfile, inputfile, outputfile, *encrypt)
 }
